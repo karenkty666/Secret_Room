@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>房間的秘密 - 三位數加法進位探究</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
+            background-color: #f0f9ff;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        /* 數塊、數條、數粒圖形樣式 */
+        .block-hundred {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #fbbf24, #d97706);
+            border: 2px solid #b45309;
+            border-radius: 6px;
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            gap: 1px;
+            padding: 2px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+        .block-hundred div {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 1px;
+        }
+
+        .bar-ten {
+            width: 22px;
+            height: 72px;
+            background: linear-gradient(135deg, #34d399, #059669);
+            border: 2px solid #047857;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            padding: 2px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+        .bar-ten div {
+            flex: 1;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 1px;
+        }
+
+        .cube-one {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #60a5fa, #2563eb);
+            border: 2px solid #1d4ed8;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+        }
+
+        .room-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+            border: 4px solid #e2e8f0;
+        }
+
+        .pulse-animation {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* 轉場動畫 */
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 md:p-5">
+
+    <!-- 頂部標題與進度 bar -->
+    <header class="max-w-6xl w-full mx-auto bg-white rounded-2xl p-4 shadow-md flex flex-wrap justify-between items-center border-b-4 border-amber-400 gap-2">
+        <div class="flex items-center space-x-3">
+            <span class="bg-amber-400 text-amber-900 text-xl font-black px-4 py-1.5 rounded-xl shadow-inner">
+                🏠 房間的秘密
+            </span>
+            <span class="text-xl font-bold text-slate-700">題目：<span class="text-blue-600 font-extrabold">365 + 248 = ?</span></span>
+        </div>
+        
+        <!-- 階段指示器 -->
+        <div class="flex items-center space-x-2 text-sm font-bold">
+            <div id="step-tag-1" class="px-3 py-1 rounded-full bg-blue-500 text-white shadow">階段 1：第一層 365</div>
+            <i class="fa-solid fa-chevron-right text-slate-300"></i>
+            <div id="step-tag-2" class="px-3 py-1 rounded-full bg-slate-200 text-slate-500">階段 2：第二層 248</div>
+            <i class="fa-solid fa-chevron-right text-slate-300"></i>
+            <div id="step-tag-3" class="px-3 py-1 rounded-full bg-slate-200 text-slate-500">階段 3：探究進位</div>
+        </div>
+    </header>
+
+    <!-- 主遊戲區域 -->
+    <main class="max-w-6xl w-full mx-auto my-3 flex-1 flex flex-col justify-between">
+        
+        <!-- 提示訊息面板 -->
+        <div id="instruction-box" class="bg-amber-100 border-2 border-amber-300 text-amber-900 p-3 rounded-2xl font-bold text-center text-lg mb-3 shadow-sm flex items-center justify-center space-x-2 fade-in">
+            <i class="fa-solid fa-circle-info text-amber-500 text-2xl"></i>
+            <span id="instruction-text">請玩家一根據數字「365」，把適當數量的數塊、數條、數粒放到第一層房間中！</span>
+        </div>
+
+        <!-- 房間主體 (百位、十位、個位) -->
+        <div class="grid grid-cols-3 gap-3 md:gap-4 flex-1 my-2">
+            
+            <!-- 百位房間 -->
+            <div class="room-card border-amber-200 flex flex-col overflow-hidden relative">
+                <div class="bg-amber-400 text-amber-950 font-black text-center py-2 text-lg md:text-xl flex justify-between px-4 items-center">
+                    <span>百位房間 (數塊)</span>
+                    <span id="carry-hundred" class="hidden bg-red-500 text-white text-sm px-2.5 py-0.5 rounded-full animate-bounce">+1 (輔助數字)</span>
+                </div>
+                <div class="p-2 flex-1 flex flex-col justify-around bg-amber-50/50">
+                    <!-- 第一層 -->
+                    <div class="border-b-2 border-dashed border-amber-200 pb-2 min-h-[90px] relative">
+                        <span class="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-br-md absolute top-0 left-0">第一層 (365)</span>
+                        <div id="room-1-hundred" class="flex flex-wrap gap-2 pt-6 justify-center items-center"></div>
+                    </div>
+                    <!-- 第二層 -->
+                    <div id="layer-2-hundred-container" class="pt-2 min-h-[90px] relative">
+                        <span class="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-br-md absolute top-0 left-0">第二層 (248)</span>
+                        <div id="room-2-hundred" class="flex flex-wrap gap-2 pt-6 justify-center items-center"></div>
+                    </div>
+                </div>
+                <!-- 操作按鈕 -->
+                <div id="controls-hundred" class="p-2 bg-amber-100 flex justify-center space-x-2 border-t border-amber-200">
+                    <button onclick="addBlock('hundred')" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 px-3 rounded-xl shadow active:scale-95 text-sm">
+                        <i class="fa-solid fa-plus"></i> 放入百位
+                    </button>
+                    <button onclick="removeBlock('hundred')" class="bg-rose-400 hover:bg-rose-500 text-white font-bold py-1.5 px-3 rounded-xl shadow active:scale-95 text-sm">
+                        <i class="fa-solid fa-minus"></i> 取出
+                    </button>
+                </div>
+            </div>
+
+            <!-- 十位房間 -->
+            <div class="room-card border-emerald-200 flex flex-col overflow-hidden relative">
+                <div class="bg-emerald-400 text-emerald-950 font-black text-center py-2 text-lg md:text-xl flex justify-between px-4 items-center">
+                    <span>十位房間 (數條)</span>
+                    <span id="carry-ten" class="hidden bg-red-500 text-white text-sm px-2.5 py-0.5 rounded-full animate-bounce">+1 (輔助數字)</span>
+                </div>
+                <div class="p-2 flex-1 flex flex-col justify-around bg-emerald-50/50">
+                    <!-- 第一層 -->
+                    <div class="border-b-2 border-dashed border-emerald-200 pb-2 min-h-[90px] relative">
+                        <span class="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-br-md absolute top-0 left-0">第一層 (365)</span>
+                        <div id="room-1-ten" class="flex flex-wrap gap-1.5 pt-6 justify-center items-center"></div>
+                    </div>
+                    <!-- 第二層 -->
+                    <div id="layer-2-ten-container" class="pt-2 min-h-[90px] relative">
+                        <span class="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-br-md absolute top-0 left-0">第二層 (248)</span>
+                        <div id="room-2-ten" class="flex flex-wrap gap-1.5 pt-6 justify-center items-center"></div>
+                    </div>
+                </div>
+                <!-- 操作按鈕 -->
+                <div id="controls-ten" class="p-2 bg-emerald-100 flex justify-center space-x-2 border-t border-emerald-200">
+                    <button onclick="addBlock('ten')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-1.5 px-3 rounded-xl shadow active:scale-95 text-sm">
+                        <i class="fa-solid fa-plus"></i> 放入十位
+                    </button>
+                    <button onclick="removeBlock('ten')" class="bg-rose-400 hover:bg-rose-500 text-white font-bold py-1.5 px-3 rounded-xl shadow active:scale-95 text-sm">
+                        <i class="fa-solid fa-minus"></i> 取出
+                    </button>
+                </div>
+            </div>
+
+            <!-- 個位房間 -->
+            <div class="room-card border-blue-200 flex flex-col overflow-hidden relative">
+                <div class="bg-blue-400 text-blue-950 font-black text-center py-2 text-lg md:text-xl flex justify-between px-4 items-center">
+                    <span>個位房間 (數粒)</span>
+                </div>
+                <div class="p-2 flex-1 flex flex-col justify-around bg-blue-50/50">
+                    <!-- 第一層 -->
+                    <div class="border-b-2 border-dashed border-blue-200 pb-2 min-h-[90px] relative">
+                        <span class="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-br-md absolute top-0 left-0">第一層 (365)</span>
+                        <div id="room-1-one" class="flex flex-wrap gap-1.5 pt-6 justify-center items-center"></div>
+                    </div>
+                    <!-- 第二層 -->
+                    <div id="layer-2-one-container" class="pt-2 min-h-[90px] relative">
+                        <span class="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-br-md absolute top-0 left-0">第二層 (248)</span>
+                        <div id="room-2-one" class="flex flex-wrap gap-1.5 pt-6 justify-center items-center"></div>
+                    </div>
+                </div>
+                <!-- 操作按鈕 -->
+                <div id="controls-one" class="p-2 bg-blue-100 flex justify-center space-x-2 border-t border-blue-200">
+                    <button onclick="addBlock('one')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1.5 px-3 rounded-xl shadow active:scale-95 text-sm">
+                        <i class="fa-solid fa-plus"></i> 放入個位
+                    </button>
+                    <button onclick="removeBlock('one')" class="bg-rose-400 hover:bg-rose-500 text-white font-bold py-1.5 px-3 rounded-xl shadow active:scale-95 text-sm">
+                        <i class="fa-solid fa-minus"></i> 取出
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 階段3 專用：滿十進一互動區 & 直式區 (預設隱藏) -->
+        <div id="part3-panel" class="hidden bg-white p-4 rounded-2xl shadow-lg border-2 border-purple-200 my-2 fade-in">
+            <div id="part3-question-section" class="text-center">
+                <h3 class="text-xl font-black text-purple-800 mb-3">🤔 思考問題：房間裡滿了，滿多少需要「進一」變成更大單位的數條或數塊呢？</h3>
+                <div class="flex justify-center space-x-4">
+                    <button onclick="answerQuestion(5)" class="bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold px-6 py-2 rounded-xl border-2 border-purple-300 text-lg shadow">滿 5 進一</button>
+                    <button onclick="answerQuestion(10)" class="bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold px-6 py-2 rounded-xl border-2 border-purple-300 text-lg shadow">滿 10 進一</button>
+                    <button onclick="answerQuestion(12)" class="bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold px-6 py-2 rounded-xl border-2 border-purple-300 text-lg shadow">滿 12 進一</button>
+                </div>
+            </div>
+
+            <div id="regroup-actions" class="hidden flex flex-wrap justify-center gap-4">
+                <button id="btn-regroup-ones" onclick="regroupOnes()" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold px-5 py-2.5 rounded-xl shadow-md flex items-center space-x-2 text-base">
+                    <span>✨ 個位：將 10 個數粒打包成 1 條數條進到十位</span>
+                </button>
+                <button id="btn-regroup-tens" onclick="regroupTens()" class="hidden bg-teal-500 hover:bg-teal-600 text-white font-bold px-5 py-2.5 rounded-xl shadow-md flex items-center space-x-2 text-base">
+                    <span>✨ 十位：將 10 條數條打包成 1 塊數塊進到百位</span>
+                </button>
+            </div>
+
+            <!-- 直式輔助運算與總結 -->
+            <div id="vertical-math-section" class="hidden mt-4 pt-4 border-t-2 border-slate-100 flex flex-col md:flex-row items-center justify-around">
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 font-mono text-xl font-bold text-slate-700">
+                    <div class="text-right text-xs text-red-500 h-4 space-x-6 pr-2">
+                        <span id="v-carry-hundred"></span>
+                        <span id="v-carry-ten"></span>
+                    </div>
+                    <div class="text-right tracking-widest">  3 6 5</div>
+                    <div class="text-right tracking-widest">+ 2 4 8</div>
+                    <div class="border-b-4 border-slate-800 my-1"></div>
+                    <div class="flex items-center justify-end space-x-2">
+                        <input id="input-answer" type="number" placeholder="?" class="w-24 text-center border-2 border-purple-400 rounded-lg p-1 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <button onclick="checkFinalAnswer()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-base hover:bg-purple-700">核對答案</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部角色與確認按鈕區 -->
+        <div id="footer-controls" class="bg-white p-3 rounded-2xl shadow-md flex justify-between items-center border-t-4 border-blue-400">
+            <div class="flex items-center space-x-3">
+                <div id="player-avatar" class="w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center font-black text-xl shadow">
+                    P1
+                </div>
+                <div>
+                    <div id="player-title" class="font-bold text-slate-800">玩家一（擺放數塊）</div>
+                    <div id="player-sub" class="text-xs text-slate-500">請玩家一擺放，完成後交給玩家二檢查</div>
+                </div>
+            </div>
+
+            <button id="btn-check" onclick="handleCheck()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-8 py-3 rounded-2xl text-xl shadow-lg active:scale-95 transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-circle-check"></i>
+                <span id="btn-check-text">玩家二：檢查並確認</span>
+            </button>
+        </div>
+
+    </main>
+
+    <!-- 對話框 Pop-up Feedback -->
+    <div id="modal-feedback" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full text-center shadow-2xl border-4 border-amber-300 fade-in">
+            <div id="modal-icon" class="text-5xl mb-3 text-amber-500">💡</div>
+            <h3 id="modal-title" class="text-2xl font-black text-slate-800 mb-2">提示</h3>
+            <p id="modal-msg" class="text-slate-600 text-lg mb-6 font-bold">訊息內容</p>
+            <button onclick="closeModal()" class="bg-amber-400 hover:bg-amber-500 text-amber-950 font-black px-6 py-2.5 rounded-xl text-lg shadow-md">
+                我知道了
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 遊戲狀態管理
+        let currentStep = 1; // 1: 365, 2: 248, 3: 進位探究
+        
+        // 玩家擺放數量
+        let counts = {
+            1: { hundred: 0, ten: 0, one: 0 },
+            2: { hundred: 0, ten: 0, one: 0 }
+        };
+
+        // 正確解答定義
+        const TARGETS = {
+            1: { hundred: 3, ten: 6, one: 5 },
+            2: { hundred: 2, ten: 4, one: 8 }
+        };
+
+        // 進位狀態
+        let regroupedOnes = false;
+        let regroupedTens = false;
+
+        // 初始化遊戲
+        window.onload = function() {
+            renderRooms();
+        };
+
+        // 增加數塊/數條/數粒
+        function addBlock(type) {
+            if (currentStep > 2) return;
+            if (counts[currentStep][type] < 15) {
+                counts[currentStep][type]++;
+                renderRooms();
+            }
+        }
+
+        // 減少數塊/數條/數粒
+        function removeBlock(type) {
+            if (currentStep > 2) return;
+            if (counts[currentStep][type] > 0) {
+                counts[currentStep][type]--;
+                renderRooms();
+            }
+        }
+
+        // 渲染房間內的組件
+        function renderRooms() {
+            // 渲染第一層
+            renderContainer('room-1-hundred', counts[1].hundred, 'hundred');
+            renderContainer('room-1-ten', counts[1].ten, 'ten');
+            renderContainer('room-1-one', counts[1].one, 'one');
+
+            // 渲染第二層
+            renderContainer('room-2-hundred', counts[2].hundred, 'hundred');
+            renderContainer('room-2-ten', counts[2].ten, 'ten');
+            renderContainer('room-2-one', counts[2].one, 'one');
+        }
+
+        function renderContainer(elementId, count, type) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const el = document.createElement('div');
+                if (type === 'hundred') {
+                    el.className = 'block-hundred';
+                    for(let j=0; j<10; j++) el.appendChild(document.createElement('div'));
+                } else if (type === 'ten') {
+                    el.className = 'bar-ten';
+                    for(let j=0; j<10; j++) el.appendChild(document.createElement('div'));
+                } else {
+                    el.className = 'cube-one';
+                }
+                container.appendChild(el);
+            }
+        }
+
+        // 檢查確認按鈕邏輯
+        function handleCheck() {
+            if (currentStep === 1) {
+                checkStep1();
+            } else if (currentStep === 2) {
+                checkStep2();
+            }
+        }
+
+        // 檢查第一層 (365)
+        function checkStep1() {
+            const cur = counts[1];
+            const tar = TARGETS[1];
+
+            if (cur.hundred === tar.hundred && cur.ten === tar.ten && cur.one === tar.one) {
+                showModal("🎉 太棒了！", "玩家一擺放正確！現在請交換角色，由玩家二擺放第二層數字「248」。", "🏻");
+                currentStep = 2;
+                updateUIForStep2();
+            } else {
+                // 不直接給答案，以提問提示
+                let hint = "";
+                if (cur.hundred !== tar.hundred) {
+                    hint = "請想想看，百位房間裡應該住幾個人（幾塊數塊）呢？";
+                } else if (cur.ten !== tar.ten) {
+                    hint = "請檢查十位房間，數條的數量對嗎？";
+                } else {
+                    hint = "個位的房間人數對嗎？再數數看數粒吧！";
+                }
+                showModal("🤔 檢查一下", hint, "🔍");
+            }
+        }
+
+        // 檢查第二層 (248)
+        function checkStep2() {
+            const cur = counts[2];
+            const tar = TARGETS[2];
+
+            if (cur.hundred === tar.hundred && cur.ten === tar.ten && cur.one === tar.one) {
+                showModal("👏 非常完美！", "兩層的數粒都正確放好了！接下來我們一起探究「房間相加與進位」的秘密！", "🌟");
+                currentStep = 3;
+                updateUIForStep3();
+            } else {
+                let hint = "";
+                if (cur.hundred !== tar.hundred) {
+                    hint = "百位房間的數量好像不太對喔，再看一次題目「248」！";
+                } else if (cur.ten !== tar.ten) {
+                    hint = "十位房間住的人數對嗎？再數一次十位數吧！";
+                } else {
+                    hint = "個位房間應該住幾個人（數粒）呢？";
+                }
+                showModal("🤔 檢查一下", hint, "🔍");
+            }
+        }
+
+        // 更新 UI - 進入階段2
+        function updateUIForStep2() {
+            document.getElementById('step-tag-1').className = "px-3 py-1 rounded-full bg-slate-200 text-slate-500";
+            document.getElementById('step-tag-2').className = "px-3 py-1 rounded-full bg-blue-500 text-white shadow";
+
+            document.getElementById('instruction-text').innerText = "請玩家二根據數字「248」，把適當數量的數塊、數條、數粒放到第二層房間中！";
+            
+            document.getElementById('player-avatar').innerText = "P2";
+            document.getElementById('player-avatar').className = "w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center font-black text-xl shadow";
+            document.getElementById('player-title').innerText = "玩家二（擺放數塊）";
+            document.getElementById('player-sub').innerText = "請玩家二擺放，完成後交給玩家一檢查";
+
+            document.getElementById('btn-check-text').innerText = "玩家一：檢查並確認";
+        }
+
+        // 更新 UI - 進入階段3 (探究進位)
+        function updateUIForStep3() {
+            document.getElementById('step-tag-2').className = "px-3 py-1 rounded-full bg-slate-200 text-slate-500";
+            document.getElementById('step-tag-3').className = "px-3 py-1 rounded-full bg-purple-600 text-white shadow";
+
+            document.getElementById('instruction-text').innerText = "探究進位：現在個位房間有 13 個數粒，十位房間有 10 條數條。房間太擠了！";
+
+            // 隱藏操作按鈕與底部檢查鈕
+            document.getElementById('controls-hundred').style.display = 'none';
+            document.getElementById('controls-ten').style.display = 'none';
+            document.getElementById('controls-one').style.display = 'none';
+            document.getElementById('footer-controls').style.display = 'none';
+
+            // 顯示階段 3 面板
+            document.getElementById('part3-panel').classList.remove('hidden');
+        }
+
+        // 回答選擇題 "滿多少要進一？"
+        function answerQuestion(val) {
+            if (val === 10) {
+                showModal("🎯 完全正確！", "滿十進一！當房間滿 10 個時，就可以打包換成更高一位的單位進到隔壁房間！", "✨");
+                document.getElementById('part3-question-section').classList.add('hidden');
+                document.getElementById('regroup-actions').classList.remove('hidden');
+            } else {
+                showModal("💡 再想想看", "在十進位數學裡，房間滿了多少個才可以換成 1 個更高的單位呢？", "❓");
+            }
+        }
+
+        // 個位進位 (10 個數粒 -> 1 條數條)
+        function regroupOnes() {
+            if (regroupedOnes) return;
+
+            // 個位 13 - 10 = 3
+            counts[1].one = 3;
+            counts[2].one = 0;
+
+            // 十位 +1 條 (變 11 條)
+            counts[1].ten = 7; // 原本 6+4=10，加上進位 1 條，放入第一層 7 條做展示
+            
+            renderRooms();
+
+            // 顯示十位輔助數字 +1
+            document.getElementById('carry-ten').classList.remove('hidden');
+            document.getElementById('v-carry-ten').innerText = "1";
+
+            regroupedOnes = true;
+
+            document.getElementById('btn-regroup-ones').classList.add('hidden');
+            document.getElementById('btn-regroup-tens').classList.remove('hidden');
+
+            document.getElementById('instruction-text').innerText = "個位完成了進位！剩 3 個數粒。現在十位房間有 11 條數條，也滿十了！請將十位進行打包進位！";
+        }
+
+        // 十位進位 (10 條數條 -> 1 塊數塊)
+        function regroupTens() {
+            if (regroupedTens) return;
+
+            // 十位 11 - 10 = 1
+            counts[1].ten = 1;
+            counts[2].ten = 0;
+
+            // 百位 +1 塊 (原 3+2=5，加進位變 6 塊)
+            counts[1].hundred = 4; // 原本 3，加進位 1
+
+            renderRooms();
+
+            // 顯示百位輔助數字 +1
+            document.getElementById('carry-hundred').classList.remove('hidden');
+            document.getElementById('v-carry-hundred').innerText = "1";
+
+            regroupedTens = true;
+
+            document.getElementById('btn-regroup-tens').classList.add('hidden');
+            document.getElementById('vertical-math-section').classList.remove('hidden');
+
+            document.getElementById('instruction-text').innerText = "太優秀了！現在每個房間的人數都符合規則了。請算出最後直式的答案吧！";
+        }
+
+        // 核對最終直式答案
+        function checkFinalAnswer() {
+            const ans = document.getElementById('input-answer').value;
+            if (parseInt(ans) === 613) {
+                showModal("🏆 恭喜通關！", "太厲害了！你成功解開了「房間的秘密」，掌握了 365 + 248 = 613 的進位加法！", "🎊");
+            } else {
+                showModal("💪 再試一次", "再數數看各個房間：百位有 6 塊、十位有 1 條、個位有 3 粒，合起來是多少呢？", "🧮");
+            }
+        }
+
+        // 彈出視窗控制
+        function showModal(title, msg, icon) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-msg').innerText = msg;
+            document.getElementById('modal-icon').innerText = icon || "💡";
+            document.getElementById('modal-feedback').classList.remove('hidden');
+            document.getElementById('modal-feedback').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-feedback').classList.add('hidden');
+            document.getElementById('modal-feedback').classList.remove('flex');
+        }
+    </script>
+</body>
+</html>
